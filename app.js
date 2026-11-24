@@ -73,8 +73,8 @@ app.post('/productos', async (req, res) => {
 
     try {
         // Mandamos a mongoose a crear un documento con el objeto que habiamos creado.
-        await Producto.create(productoNuevo);
-        res.status(201).json(productoNuevo);
+        const productoCreado = await Producto.create(productoNuevo);
+        res.status(201).json(productoCreado);
 
     } catch (error) {
 
