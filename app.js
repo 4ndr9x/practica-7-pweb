@@ -33,7 +33,7 @@ app.get('/productos', async (req, res) => {
 app.get('/productos/:id', async (req, res) => {
     try {
         
-        const producto = await BuscarProductoPorId(req.params.id);
+        const producto = await Producto.findById(req.params.id);
 
         if (!producto) {
             return res.status(404).json({ mensaje: 'Producto no encontrado' })
@@ -47,23 +47,6 @@ app.get('/productos/:id', async (req, res) => {
 
     }
 })
-
-// Funcion auxiliar para buscar un producto por su ID.
-
-async function BuscarProductoPorId(idEnviado) {
-   
-     try {
-        const producto = await Producto.findById(idEnviado)
-
-        return producto;
-
-    } catch (error) {
-
-        return false;
-
-    }
-}
-
 
 // ============================================================
 // PRÁCTICA 7
@@ -83,7 +66,7 @@ app.post('/productos', async (req, res) => {
 
     const precioSanitizado = parseFloat(precio);
 
-    if (!precioFaltante) { // Bucle if para que dependiendo de que suceda, coloque un mensaje u otro.
+    if (!precioFaltante) { // Condicional if para que dependiendo de que suceda, coloque un mensaje u otro.
         if (Number.isNaN(precioSanitizado)) {
             detallesErrores.push("Debe introducir un precio valido.");
         } else if (precioSanitizado <= 0) {
@@ -91,15 +74,15 @@ app.post('/productos', async (req, res) => {
         }
     }
 
-    if (detallesErrores.length > 0) { // Metodo disparador del codigo HTTP 400 para hacerlo una sola vez con todos los detalles.
+    if (detallesErrores.length > 0) { // Condicional disparadora del codigo HTTP 400 para hacerlo una sola vez con todos los detalles.
         return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
     }   
 
     // Creamos el objeto con todos sus campos.
-    const productoNuevo = {nombre: nombre, descripcion: descripcion, precio: precioSanitizado}
+    const productoNuevo = {nombre: nombre, descripcion: descripcion, precio: precioSanitizado};
 
     // Mandamos a mongoose a crear un documento con el objeto que habiamos creado.
-    await Producto.create(productoNuevo)
+    await Producto.create(productoNuevo);
     res.status(201).json(productoNuevo);
 
 })
@@ -126,7 +109,7 @@ app.put('/productos/:id', async (req, res) => {
 
     const precioSanitizado = parseFloat(precio);
 
-    if (!precioFaltante) { // Bucle if para que dependiendo de que suceda, coloque un mensaje u otro.
+    if (!precioFaltante) { // Condicional if para que dependiendo de que suceda, coloque un mensaje u otro.
         if (Number.isNaN(precioSanitizado)) {
             detallesErrores.push("Debe introducir un precio valido.");
         } else if (precioSanitizado <= 0) {
@@ -134,7 +117,7 @@ app.put('/productos/:id', async (req, res) => {
         }
     }
 
-    if (detallesErrores.length > 0) { // Metodo disparador del codigo HTTP 400 para hacerlo una sola vez con todos los detalles.
+    if (detallesErrores.length > 0) { // Condicional disparadora del codigo HTTP 400 para hacerlo una sola vez con todos los detalles.
         return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
     }   
 
