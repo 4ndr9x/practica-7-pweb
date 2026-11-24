@@ -33,7 +33,7 @@ app.get('/productos', async (req, res) => {
 app.get('/productos/:id', async (req, res) => {
     try {
         
-        const producto = await BuscarProductoPorId(req.params.id);
+        const producto = await Producto.findById(req.params.id);
 
         if (!producto) {
             return res.status(404).json({ mensaje: 'Producto no encontrado' })
@@ -43,27 +43,10 @@ app.get('/productos/:id', async (req, res) => {
 
     } catch (error) {
         
-        res.status(400).json({ mensaje: 'Id no valido' })
+        res.status(400).json({ mensaje: 'El ID del producto es invalido.' })
 
     }
 })
-
-// Funcion auxiliar para buscar un producto por su ID.
-
-async function BuscarProductoPorId(idEnviado) {
-   
-     try {
-        const producto = await Producto.findById(idEnviado)
-
-        return producto;
-
-    } catch (error) {
-
-        return false;
-
-    }
-}
-
 
 // ============================================================
 // PRÁCTICA 7
@@ -81,26 +64,28 @@ app.post('/productos', async (req, res) => {
         detallesErrores.push("Todos los campos son obligatorios.")
     }
 
-    const precioSanitizado = parseFloat(precio);
-
-    if (!precioFaltante) { // Bucle if para que dependiendo de que suceda, coloque un mensaje u otro.
-        if (Number.isNaN(precioSanitizado)) {
-            detallesErrores.push("Debe introducir un precio valido.");
-        } else if (precioSanitizado <= 0) {
-            detallesErrores.push("El precio debe ser mayor a cero.");
-        }
-    }
-
-    if (detallesErrores.length > 0) { // Metodo disparador del codigo HTTP 400 para hacerlo una sola vez con todos los detalles.
+    if (detallesErrores.length > 0) { // Condicional disparadora del codigo HTTP 400 para hacerlo una sola vez con todos los detalles.
         return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
     }   
 
     // Creamos el objeto con todos sus campos.
-    const productoNuevo = {nombre: nombre, descripcion: descripcion, precio: precioSanitizado}
+    const productoNuevo = {nombre, descripcion, precio};
 
-    // Mandamos a mongoose a crear un documento con el objeto que habiamos creado.
-    await Producto.create(productoNuevo)
-    res.status(201).json(productoNuevo);
+    try {
+        // Mandamos a mongoose a crear un documento con el objeto que habiamos creado.
+        await Producto.create(productoNuevo);
+        res.status(201).json(productoNuevo);
+
+    } catch (error) {
+
+        if (error instanceof mongoose.Error.ValidationError) { // Mostramos en caso de que suceda algun error en la DB, que errores ocurrieron.
+            Object.values(error.errors).forEach(detalleError => {
+                detallesErrores.push(detalleError.message);
+            });
+        };
+
+        return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
+    }
 
 })
 
@@ -109,10 +94,10 @@ app.post('/productos', async (req, res) => {
 app.put('/productos/:id', async (req, res) => {
 
     const id = req.params.id;
-    const productoEncontrado = null; //TODO: Falta extraer la logica en una funcion aparte para buscar por ID.
 
-    if (typeof id !== 'string' || !productoEncontrado) {
-        return res.status(404).json({ mensaje: 'El producto que has intentado modificar no existe.' })
+    if (!mongoose.isObjectIdOrHexString(id)) { // Validamos que la ID sea de un formato valido.
+
+        return res.status(400).json({ mensaje: 'El ID del producto es invalido.' })
     }
 
     const {nombre, descripcion, precio} = req.body;
@@ -124,41 +109,54 @@ app.put('/productos/:id', async (req, res) => {
         detallesErrores.push("Todos los campos son obligatorios.")
     }
 
-    const precioSanitizado = parseFloat(precio);
-
-    if (!precioFaltante) { // Bucle if para que dependiendo de que suceda, coloque un mensaje u otro.
-        if (Number.isNaN(precioSanitizado)) {
-            detallesErrores.push("Debe introducir un precio valido.");
-        } else if (precioSanitizado <= 0) {
-            detallesErrores.push("El precio debe ser mayor a cero.");
-        }
-    }
-
     if (detallesErrores.length > 0) { // Metodo disparador del codigo HTTP 400 para hacerlo una sola vez con todos los detalles.
         return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
-    }   
-
-    const nombreSanitizado = nombre.trim();
-
-    // Mantenemos el mismo ID al ingresar la nueva informacion del producto.
-    productos[indiceEncontrado] = {id: productos[indiceEncontrado].id, nombre: nombreSanitizado, descripcion: descripcion, precio: precioSanitizado};
-
-    res.status(200).json(productos[indiceEncontrado]);
-})
-
-
-// DELETE /productos/:id - Eliminar producto
-app.delete('/productos/:id', (req, res) => {
-
-    const id = parseInt(req.params.id)
-    const indiceEncontrado = productos.findIndex(p => p.id === id);
-
-    if (indiceEncontrado === -1) {
-        return res.status(404).json({ mensaje: 'El producto que has intentado eliminar no existe.' })
     }
 
-    const productoEliminado = productos.splice(indiceEncontrado, 1)[0]; // Al splice devolver un arreglo, obtengo el unico elemento eliminado.
-    res.status(200).json({mensaje: "El producto ha sido eliminado correctamente.", producto: productoEliminado}); // Mensaje de respuesta con el producto.
+    try {
+
+        const producto = await Producto.findByIdAndUpdate( // Usamos el metodo para hacer Update de una vez.
+            id, 
+            {nombre, descripcion, precio}, 
+            {returnDocument: 'after', runValidators: true});
+
+        if (!producto) { // Al especificar el returnDocument en after, debe de devolvernos el documento que actualizamos. Y con el validamos.
+            return res.status(404).json({ mensaje: 'El producto que has intentado modificar no existe.' })
+        }
+
+        res.status(200).json(producto);
+
+    } catch (error) {
+        console.error(error) // En caso de que suceda un error interno, printea al servidor y muestra un mensaje controlado.
+        res.status(500).json({mensaje: "Ha ocurrido un problema en el servidor."})
+    }
+
+})
+
+// DELETE /productos/:id - Eliminar producto
+app.delete('/productos/:id', async (req, res) => {
+
+    const id = req.params.id;
+
+    if (!mongoose.isObjectIdOrHexString(id)) { // Validamos que la ID sea de un formato valido.
+
+        return res.status(400).json({ mensaje: 'El ID del producto es invalido.' })
+    }
+
+    try {
+
+        const productoEliminado = await Producto.findByIdAndDelete(id); // Pasamos el ID ya validado al metodo.
+
+        if (!productoEliminado) { // Nos retorna el producto eliminado y ese mismo lo usamos para validar si se realizo la operacion.
+            return res.status(404).json({ mensaje: 'El producto que has intentado eliminar no existe.' })
+        }
+
+        res.status(200).json({mensaje: "El producto ha sido eliminado correctamente.", producto: productoEliminado}); // Mensaje de respuesta con el producto.
+
+    } catch (error) {
+        console.error(error) // En caso de que suceda un error interno, printea al servidor y muestra un mensaje controlado.
+        res.status(500).json({mensaje: "Ha ocurrido un problema en el servidor."})
+    }
 
 })
 

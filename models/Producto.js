@@ -15,6 +15,10 @@ const productoSchema = new mongoose.Schema({
         type: Number,
         required: [true, "El precio es obligatorio."],
         min: [0, "El precio no puede ser negativo."]
+    },
+    fechaCreacion: {
+        type: Date,
+        default: Date.now
     }
 });
 
