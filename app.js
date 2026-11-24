@@ -13,42 +13,40 @@ mongoose.connect(process.env.MONGODB_URI)
 
 app.use(express.json())
 
-const productos = [
-    {
-        id: 1,
-        nombre: 'Teclado inalambrico',
-        descripcion: 'Teclado 101 teclas idioma ingles',
-        precio: 1500.00
-    },
-    {
-        id: 2,
-        nombre: 'Mouse inalambrico',
-        descripcion: 'Mouse optico inalambrico.',
-        precio: 600.00
-    },
-    {
-        id: 3,
-        nombre: 'Monitor 23.5 pulgadas full hd',
-        descripcion: 'Monitor Full HD panel IPS',
-        precio: 6500.00
-    }
-]
-
 // GET - Listar todos los productos
-app.get('/productos', (req, res) => {
+app.get('/productos', async (req, res) => {
+
+    try {
+
+        const productos = await Producto.find();
+        
+        res.json(productos);
+
+    } catch (error) {
+
+        return res.status(500).json({mensaje: "Sucedio un error en el servidor."})
+
+    }
+
     res.json(productos)
 })
 
 // GET - Obtener un producto por id
-app.get('/productos/:id', (req, res) => {
-    const id = parseInt(req.params.id)
-    const producto = productos.find(p => p.id === id)
+app.get('/productos/:id', async (req, res) => {
+    try {
+        const producto = await Producto.findById(req.params.id)
 
-    if (!producto) {
-        return res.status(404).json({ mensaje: 'Producto no encontrado' })
+        if (!producto) {
+            return res.status(404).json({ mensaje: 'Producto no encontrado' })
+        }
+
+        res.json(producto)
+
+    } catch (error) {
+
+        res.status(400).json({ mensaje: 'Id no valido' })
+
     }
-
-    res.json(producto)
 })
 
 
