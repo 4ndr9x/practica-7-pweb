@@ -3,53 +3,74 @@ require('dotenv').config()
 const express = require('express')
 const app = express()
 
+// Exportaciones y conexiones
+const mongoose = require('mongoose');
+const Producto = require('./models/Producto');
+
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {console.log("Conexion con MongoDB exitosa.")})
+    .catch((error) => {console.error("La conexion con MongoDB a fallado. Revise su cadena de conexion.\n")});
+
 app.use(express.json())
 
-const productos = [
-    {
-        id: 1,
-        nombre: 'Teclado inalambrico',
-        descripcion: 'Teclado 101 teclas idioma ingles',
-        precio: 1500.00
-    },
-    {
-        id: 2,
-        nombre: 'Mouse inalambrico',
-        descripcion: 'Mouse optico inalambrico.',
-        precio: 600.00
-    },
-    {
-        id: 3,
-        nombre: 'Monitor 23.5 pulgadas full hd',
-        descripcion: 'Monitor Full HD panel IPS',
-        precio: 6500.00
-    }
-]
-
 // GET - Listar todos los productos
-app.get('/productos', (req, res) => {
-    res.json(productos)
+app.get('/productos', async (req, res) => {
+
+    try {
+
+        const productos = await Producto.find();
+        
+        res.json(productos);
+
+    } catch (error) {
+
+        return res.status(500).json({mensaje: "Sucedio un error en el servidor."})
+
+    }
 })
 
 // GET - Obtener un producto por id
-app.get('/productos/:id', (req, res) => {
-    const id = parseInt(req.params.id)
-    const producto = productos.find(p => p.id === id)
+app.get('/productos/:id', async (req, res) => {
+    try {
+        
+        const producto = await BuscarProductoPorId(req.params.id);
 
-    if (!producto) {
-        return res.status(404).json({ mensaje: 'Producto no encontrado' })
+        if (!producto) {
+            return res.status(404).json({ mensaje: 'Producto no encontrado' })
+        }
+
+        res.json(producto);
+
+    } catch (error) {
+        
+        res.status(400).json({ mensaje: 'Id no valido' })
+
     }
-
-    res.json(producto)
 })
+
+// Funcion auxiliar para buscar un producto por su ID.
+
+async function BuscarProductoPorId(idEnviado) {
+   
+     try {
+        const producto = await Producto.findById(idEnviado)
+
+        return producto;
+
+    } catch (error) {
+
+        return false;
+
+    }
+}
 
 
 // ============================================================
-// PRÁCTICA 6
+// PRÁCTICA 7
 // ============================================================
 
 // POST /productos - Crear nuevo producto
-app.post('/productos', (req, res) => {
+app.post('/productos', async (req, res) => {
     const {nombre, descripcion, precio} = req.body;
 
     const detallesErrores = []; // Arreglo en donde se guardaran los errores que sucedan en la validacion de los datos
@@ -74,25 +95,23 @@ app.post('/productos', (req, res) => {
         return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
     }   
 
-    const idNuevo = productos.length > 0 ? productos[productos.length - 1].id + 1 : 1; // Asignacion automatica del ID en base a la lista para el nuevo producto.
-    const nombreSanitizado = nombre.trim();
-
     // Creamos el objeto con todos sus campos.
-    const productoNuevo = {id: idNuevo, nombre: nombreSanitizado, descripcion: descripcion, precio: precioSanitizado}
+    const productoNuevo = {nombre: nombre, descripcion: descripcion, precio: precioSanitizado}
 
-    productos.push(productoNuevo);
+    // Mandamos a mongoose a crear un documento con el objeto que habiamos creado.
+    await Producto.create(productoNuevo)
     res.status(201).json(productoNuevo);
 
 })
 
 // PUT /productos/:id - Actualizar producto
 
-app.put('/productos/:id', (req, res) => {
+app.put('/productos/:id', async (req, res) => {
 
-    const id = parseInt(req.params.id)
-    const indiceEncontrado = productos.findIndex(p => p.id === id);
+    const id = req.params.id;
+    const productoEncontrado = null; //TODO: Falta extraer la logica en una funcion aparte para buscar por ID.
 
-    if (indiceEncontrado === -1) {
+    if (typeof id !== 'string' || !productoEncontrado) {
         return res.status(404).json({ mensaje: 'El producto que has intentado modificar no existe.' })
     }
 
