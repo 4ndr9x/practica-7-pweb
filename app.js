@@ -82,9 +82,15 @@ app.post('/productos', async (req, res) => {
             Object.values(error.errors).forEach(detalleError => {
                 detallesErrores.push(detalleError.message);
             });
-        };
 
-        return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
+            return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
+            
+        } else {
+
+            console.error(error)
+            return res.status(500).json({ mensaje: 'Ha ocurrido un problema en el servidor.' })
+            
+        }
     }
 
 })
@@ -127,8 +133,25 @@ app.put('/productos/:id', async (req, res) => {
         res.status(200).json(producto);
 
     } catch (error) {
-        console.error(error) // En caso de que suceda un error interno, printea al servidor y muestra un mensaje controlado.
-        res.status(500).json({mensaje: "Ha ocurrido un problema en el servidor."})
+
+        if (error instanceof mongoose.Error.ValidationError) { // Mostramos en caso de que suceda algun error en la DB, que errores ocurrieron.
+
+            Object.values(error.errors).forEach(detalleError => {
+                detallesErrores.push(detalleError.message);
+            });
+
+        } else if (error instanceof mongoose.Error.CastError) { // Este es en caso de que suceda algun error con el ID al buscar en la DB.
+
+            detallesErrores.push(error.message)
+            
+        } else {
+
+            console.error(error)
+            return res.status(500).json({ mensaje: 'Ha ocurrido un problema en el servidor.' })
+            
+        }
+
+        return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
     }
 
 })
