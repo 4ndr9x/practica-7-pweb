@@ -3,6 +3,14 @@ require('dotenv').config()
 const express = require('express')
 const app = express()
 
+// Exportaciones y conexiones
+const mongoose = require('mongoose');
+const Producto = require('./models/Producto');
+
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {console.log("Conexion con MongoDB exitosa.")})
+    .catch((error) => {console.error("La conexion con MongoDB a fallado. Revise su cadena de conexion.\n")});
+
 app.use(express.json())
 
 const productos = [
@@ -45,7 +53,7 @@ app.get('/productos/:id', (req, res) => {
 
 
 // ============================================================
-// PRÁCTICA 6
+// PRÁCTICA 7
 // ============================================================
 
 // POST /productos - Crear nuevo producto
