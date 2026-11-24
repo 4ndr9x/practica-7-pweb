@@ -27,27 +27,42 @@ app.get('/productos', async (req, res) => {
         return res.status(500).json({mensaje: "Sucedio un error en el servidor."})
 
     }
-
-    res.json(productos)
 })
 
 // GET - Obtener un producto por id
 app.get('/productos/:id', async (req, res) => {
     try {
-        const producto = await Producto.findById(req.params.id)
+        
+        const producto = await BuscarProductoPorId(req.params.id);
 
         if (!producto) {
             return res.status(404).json({ mensaje: 'Producto no encontrado' })
         }
 
-        res.json(producto)
+        res.json(producto);
 
     } catch (error) {
-
+        
         res.status(400).json({ mensaje: 'Id no valido' })
 
     }
 })
+
+// Funcion auxiliar para buscar un producto por su ID.
+
+async function BuscarProductoPorId(idEnviado) {
+   
+     try {
+        const producto = await Producto.findById(idEnviado)
+
+        return producto;
+
+    } catch (error) {
+
+        return false;
+
+    }
+}
 
 
 // ============================================================
@@ -55,7 +70,7 @@ app.get('/productos/:id', async (req, res) => {
 // ============================================================
 
 // POST /productos - Crear nuevo producto
-app.post('/productos', (req, res) => {
+app.post('/productos', async (req, res) => {
     const {nombre, descripcion, precio} = req.body;
 
     const detallesErrores = []; // Arreglo en donde se guardaran los errores que sucedan en la validacion de los datos
@@ -80,25 +95,23 @@ app.post('/productos', (req, res) => {
         return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
     }   
 
-    const idNuevo = productos.length > 0 ? productos[productos.length - 1].id + 1 : 1; // Asignacion automatica del ID en base a la lista para el nuevo producto.
-    const nombreSanitizado = nombre.trim();
-
     // Creamos el objeto con todos sus campos.
-    const productoNuevo = {id: idNuevo, nombre: nombreSanitizado, descripcion: descripcion, precio: precioSanitizado}
+    const productoNuevo = {nombre: nombre, descripcion: descripcion, precio: precioSanitizado}
 
-    productos.push(productoNuevo);
+    // Mandamos a mongoose a crear un documento con el objeto que habiamos creado.
+    await Producto.create(productoNuevo)
     res.status(201).json(productoNuevo);
 
 })
 
 // PUT /productos/:id - Actualizar producto
 
-app.put('/productos/:id', (req, res) => {
+app.put('/productos/:id', async (req, res) => {
 
-    const id = parseInt(req.params.id)
-    const indiceEncontrado = productos.findIndex(p => p.id === id);
+    const id = req.params.id;
+    const productoEncontrado = null; //TODO: Falta extraer la logica en una funcion aparte para buscar por ID.
 
-    if (indiceEncontrado === -1) {
+    if (typeof id !== 'string' || !productoEncontrado) {
         return res.status(404).json({ mensaje: 'El producto que has intentado modificar no existe.' })
     }
 
