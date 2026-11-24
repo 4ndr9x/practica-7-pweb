@@ -1,0 +1,6 @@
+# Cosas implementadas:
+
+
+
+### Notas adicionales
+
