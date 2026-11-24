@@ -13,12 +13,26 @@ mongoose.connect(process.env.MONGODB_URI)
 
 app.use(express.json())
 
+// "Middleware" para extraer el ID
+
+function ValidarId(req, res, next) {
+
+    const id = req.params.id;
+    
+    if (!mongoose.isObjectIdOrHexString(id)) { // Validamos que la ID sea de un formato valido.
+
+        return res.status(400).json({ mensaje: 'El ID del producto es invalido.' })
+    }
+
+    next(); // Dejamos que express siga su curso
+}
+
 // GET - Listar todos los productos
 app.get('/productos', async (req, res) => {
 
     try {
 
-        const productos = await Producto.find();
+        const productos = await Producto.find().sort({creadoEn: -1}); // Ordenamos los productos buscados de manera descendente (En base al campo de la fecha)
         
         res.json(productos);
 
@@ -30,22 +44,25 @@ app.get('/productos', async (req, res) => {
 })
 
 // GET - Obtener un producto por id
-app.get('/productos/:id', async (req, res) => {
+app.get('/productos/:id', ValidarId, async (req, res) => {
+    
+    const id = req.params.id; // La validacion la se la delegamos al middleware
+
     try {
         
-        const producto = await Producto.findById(req.params.id);
+        const producto = await Producto.findById(id);
 
-        if (!producto) {
+        if (!producto) { // Verificamos que el producto si se haya encontrado
             return res.status(404).json({ mensaje: 'Producto no encontrado' })
         }
 
-        res.json(producto);
+        res.json(producto); // Lo devolvemos.
 
     } catch (error) {
-        
-        res.status(400).json({ mensaje: 'El ID del producto es invalido.' })
 
-    }
+        console.error(error)
+        return res.status(500).json({ mensaje: 'Ha ocurrido un problema en el servidor.' })
+    } 
 })
 
 // ============================================================
@@ -54,7 +71,7 @@ app.get('/productos/:id', async (req, res) => {
 
 // POST /productos - Crear nuevo producto
 app.post('/productos', async (req, res) => {
-    const {nombre, descripcion, precio} = req.body;
+    const {nombre, descripcion, precio} = req.body ?? {};
 
     const detallesErrores = []; // Arreglo en donde se guardaran los errores que sucedan en la validacion de los datos
     const precioFaltante = precio === undefined || precio === null || precio === ''; // Filtros dento de una variable para no escribir lo mismo varias veces
@@ -82,25 +99,26 @@ app.post('/productos', async (req, res) => {
             Object.values(error.errors).forEach(detalleError => {
                 detallesErrores.push(detalleError.message);
             });
-        };
 
-        return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
+            return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
+
+        } else {
+
+            console.error(error)
+            return res.status(500).json({ mensaje: 'Ha ocurrido un problema en el servidor.' })
+            
+        }
     }
 
 })
 
 // PUT /productos/:id - Actualizar producto
 
-app.put('/productos/:id', async (req, res) => {
+app.put('/productos/:id', ValidarId, async (req, res) => {
 
-    const id = req.params.id;
+    const id = req.params.id; // La validacion la se la delegamos al middleware
 
-    if (!mongoose.isObjectIdOrHexString(id)) { // Validamos que la ID sea de un formato valido.
-
-        return res.status(400).json({ mensaje: 'El ID del producto es invalido.' })
-    }
-
-    const {nombre, descripcion, precio} = req.body;
+    const {nombre, descripcion, precio} = req.body ?? {};
     const detallesErrores = []; // Arreglo en donde se guardaran los errores que sucedan en la validacion de los datos
     const precioFaltante = precio === undefined || precio === null || precio === ''; // Filtros dento de una variable para no escribir lo mismo varias veces.
 
@@ -127,21 +145,33 @@ app.put('/productos/:id', async (req, res) => {
         res.status(200).json(producto);
 
     } catch (error) {
-        console.error(error) // En caso de que suceda un error interno, printea al servidor y muestra un mensaje controlado.
-        res.status(500).json({mensaje: "Ha ocurrido un problema en el servidor."})
+
+        if (error instanceof mongoose.Error.ValidationError) { // Mostramos en caso de que suceda algun error en la DB, que errores ocurrieron.
+
+            Object.values(error.errors).forEach(detalleError => {
+                detallesErrores.push(detalleError.message);
+            });
+
+        } else if (error instanceof mongoose.Error.CastError) { // Este es en caso de que suceda algun error con el ID al buscar en la DB.
+
+            detallesErrores.push(error.message)
+            
+        } else {
+
+            console.error(error)
+            return res.status(500).json({ mensaje: 'Ha ocurrido un problema en el servidor.' })
+            
+        }
+
+        return res.status(400).json({mensaje: "Existen algunos errores en tu peticion.", detallesErrores});
     }
 
 })
 
 // DELETE /productos/:id - Eliminar producto
-app.delete('/productos/:id', async (req, res) => {
+app.delete('/productos/:id', ValidarId, async (req, res) => {
 
-    const id = req.params.id;
-
-    if (!mongoose.isObjectIdOrHexString(id)) { // Validamos que la ID sea de un formato valido.
-
-        return res.status(400).json({ mensaje: 'El ID del producto es invalido.' })
-    }
+    const id = req.params.id; // La validacion la se la delegamos al middleware
 
     try {
 
