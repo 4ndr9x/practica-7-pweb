@@ -13,7 +13,7 @@ const Producto = require('./models/Producto');
 
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => {console.log("Conexion con MongoDB exitosa.")})
-    .catch((error) => {console.error("La conexion con MongoDB a fallado. Revise su cadena de conexion.\n")});
+    .catch((error) => {console.error("La conexion con MongoDB a fallado. Revise su cadena de conexion.")});
 
 app.use(express.json())
 
